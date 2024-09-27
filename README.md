@@ -84,8 +84,6 @@ KONG_HTTP_PORT and KONG_HTTPS_PORT: Dynamic ports for HTTP and HTTPS access.
 
 Docker and Docker Compose installed on the VPS.
 
-Access to Supabase and its API keys.
-
 OpenSSL for generating secure passwords.
 
 ### Contributing
