@@ -8,10 +8,10 @@ consumers:
   - username: DASHBOARD
   - username: anon
     keyauth_credentials:
-      - key: $SUPABASE_ANON_KEY
+      - key: ${SUPABASE_ANON_KEY}
   - username: service_role
     keyauth_credentials:
-      - key: $SUPABASE_SERVICE_KEY
+      - key: ${SUPABASE_SERVICE_KEY}
 
 ###
 ### Access Control List
@@ -35,35 +35,6 @@ basicauth_credentials:
 ###
 services:
   ## Open Auth routes
-  - name: auth-v1-open
-    url: http://auth:9999/verify
-    routes:
-      - name: auth-v1-open
-        strip_path: true
-        paths:
-          - /auth/v1/verify
-    plugins:
-      - name: cors
-  - name: auth-v1-open-callback
-    url: http://auth:9999/callback
-    routes:
-      - name: auth-v1-open-callback
-        strip_path: true
-        paths:
-          - /auth/v1/callback
-    plugins:
-      - name: cors
-  - name: auth-v1-open-authorize
-    url: http://auth:9999/authorize
-    routes:
-      - name: auth-v1-open-authorize
-        strip_path: true
-        paths:
-          - /auth/v1/authorize
-    plugins:
-      - name: cors
-
-  ## Secure Auth routes
   - name: auth-v1
     _comment: 'GoTrue: /auth/v1/* -> http://auth:9999/*'
     url: http://auth:9999/
@@ -77,6 +48,27 @@ services:
       - name: key-auth
         config:
           hide_credentials: false
+      - name: acl
+        config:
+          hide_groups_header: true
+          allow:
+            - admin
+            - anon
+
+  ## Secure Auth routes
+  - name: rest-v1
+    _comment: 'PostgREST: /rest/v1/* -> http://rest:3000/*'
+    url: http://rest:3000/
+    routes:
+      - name: rest-v1-all
+        strip_path: true
+        paths:
+          - /rest/v1/
+    plugins:
+      - name: cors
+      - name: key-auth
+        config:
+          hide_credentials: true
       - name: acl
         config:
           hide_groups_header: true
@@ -172,6 +164,7 @@ services:
           allow:
             - admin
             - anon
+
   ## Storage routes: the storage server manages its own auth
   - name: storage-v1
     _comment: 'Storage: /storage/v1/* -> http://storage:5000/*'
@@ -186,8 +179,8 @@ services:
 
   ## Edge Functions routes
   - name: functions-v1
-    _comment: 'Edge Functions: /functions/v1/* -> http://functions:9000/*'
-    url: http://functions:9000/
+    _comment: 'Edge Functions: /functions/v1/* -> http://edge-functions:8081/*'
+    url: http://edge-functions:8081/
     routes:
       - name: functions-v1-all
         strip_path: true
@@ -198,7 +191,7 @@ services:
 
   ## Analytics routes
   - name: analytics-v1
-    _comment: 'Analytics: /analytics/v1/* -> http://logflare:4000/*'
+    _comment: 'Analytics: /analytics/v1/* -> http://analytics:4000/*'
     url: http://analytics:4000/
     routes:
       - name: analytics-v1-all
@@ -208,7 +201,7 @@ services:
 
   ## Secure Database routes
   - name: meta
-    _comment: 'pg-meta: /pg/* -> http://pg-meta:8080/*'
+    _comment: 'pg-meta: /pg/* -> http://meta:8080/*'
     url: http://meta:8080/
     routes:
       - name: meta-all
