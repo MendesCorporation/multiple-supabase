@@ -37,9 +37,9 @@ export ANALYTICS_PORT=40$(shuf -i 10-99 -n 1)
 #export VECTOR_PORT=90$(shuf -i 10-99 -n 1)
 
 # Set values for required variables
-export API_EXTERNAL_URL="http://217.196.60.79:${KONG_HTTP_PORT}" #replace with your IP
-export SITE_URL="http://217.196.60.79:3000" #replace with your IP
-export SUPABASE_PUBLIC_URL="http://217.196.60.79:${KONG_HTTP_PORT}" #replace with your IP
+export API_EXTERNAL_URL="http://0.0.0.0:${KONG_HTTP_PORT}" #replace with your IP
+export SITE_URL="http://0.0.0.0:3000" #replace with your IP
+export SUPABASE_PUBLIC_URL="http://0.0.0.0:${KONG_HTTP_PORT}" #replace with your IP
 export STUDIO_DEFAULT_ORGANIZATION="YourOrganization"
 export STUDIO_DEFAULT_PROJECT="YourProject"
 export ENABLE_EMAIL_SIGNUP="true"
