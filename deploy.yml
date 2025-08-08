@@ -1,0 +1,98 @@
+name: 🔧 Deploy Supabase Self-host - Moria (porta 3019)
+
+concurrency:
+  group: moria-supabase-deploy
+  cancel-in-progress: true
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  VPS_HOST: '31.97.85.98'
+  VPS_USER: 'root'
+  SUPABASE_DIR: '/root/moria-supabase'
+  KONG_PORT: '3019'
+  INSTANCE_ID: 'moria'
+
+jobs:
+  deploy:
+    name: 🚀 Provisionar Supabase self-host na VPS
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    
+    steps:
+    - name: 📥 Checkout
+      uses: actions/checkout@v4
+
+    - name: 🔑 Instalar SSH Tools
+      run: |
+        echo "🔑 Instalando ferramentas SSH..."
+        sudo apt-get update -q
+        sudo apt-get install -y sshpass
+        echo "✅ Ferramentas SSH instaladas"
+
+    - name: 📦 Empacotar diretório docker/
+      run: |
+        echo "🔧 Empacotando docker/..."
+        tar --warning=no-file-changed -czf supabase-docker.tar.gz docker || true
+        echo "📤 Enviando para VPS..."
+        sshpass -p '${{ secrets.VPS_PASSWORD }}' scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null supabase-docker.tar.gz ${{ env.VPS_USER }}@${{ env.VPS_HOST }}:/tmp/
+
+    - name: 🚀 Provisionar Supabase self-host na VPS
+      run: |
+        echo "🏗️ Executando provisionamento na VPS..."
+        echo "  📦 Commit: ${{ github.sha }}"
+        echo "  🌿 Branch: ${{ github.ref_name }}"
+        echo "  👤 Actor: ${{ github.actor }}"
+        echo "  🕐 Timestamp: $(date)"
+
+        sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ${{ env.VPS_USER }}@${{ env.VPS_HOST }} "
+          set -euo pipefail
+          mkdir -p ${{ env.SUPABASE_DIR }}
+          cd ${{ env.SUPABASE_DIR }}
+          rm -rf docker supabase-docker.tar.gz .env-* docker-compose-*.yml volumes-* || true
+          mv /tmp/supabase-docker.tar.gz .
+          tar -xzf supabase-docker.tar.gz
+          rm -f supabase-docker.tar.gz
+          cd docker
+          gen_b64url() { openssl base64 -A | tr '+/' '-_' | tr -d '='; }
+          now=$(date +%s); exp=$((now + 10*365*24*3600))
+          export JWT_SECRET=$(openssl rand -hex 32)
+          header=$(printf '{\"alg\":\"HS256\",\"typ\":\"JWT\"}' | gen_b64url)
+          payload_anon=$(printf '{\"role\":\"anon\",\"iss\":\"supabase\",\"iat\":%s,\"exp\":%s}' "$now" "$exp" | gen_b64url)
+          payload_service=$(printf '{\"role\":\"service_role\",\"iss\":\"supabase\",\"iat\":%s,\"exp\":%s}' "$now" "$exp" | gen_b64url)
+          sign() { data=$1; printf '%s' "$data" | openssl dgst -sha256 -hmac "$JWT_SECRET" -binary | gen_b64url; }
+          export ANON_KEY=\"$header.$payload_anon.$(sign \"$header.$payload_anon\")\"
+          export SERVICE_ROLE_KEY=\"$header.$payload_service.$(sign \"$header.$payload_service\")\"
+          export INSTANCE_ID='${{ env.INSTANCE_ID }}'
+          export KONG_HTTP_PORT='${{ env.KONG_PORT }}'
+          export KONG_HTTPS_PORT='8449'
+          export STUDIO_DEFAULT_ORGANIZATION='fuseagencia'
+          export STUDIO_DEFAULT_PROJECT='moria'
+          export DASHBOARD_USERNAME='admin'
+          export DASHBOARD_PASSWORD='admin123'
+          export API_EXTERNAL_URL='http://${{ env.VPS_HOST }}:${{ env.KONG_PORT }}'
+          export SUPABASE_PUBLIC_URL='http://${{ env.VPS_HOST }}:${{ env.KONG_PORT }}'
+          export SITE_URL='http://${{ env.VPS_HOST }}:${{ env.KONG_PORT }}'
+          chmod +x generate.bash
+          ./generate.bash
+          echo 'Aguardando serviços...'; sleep 15
+          docker compose -f docker-compose-${INSTANCE_ID}.yml ps
+          for i in 1 2 3 4 5; do
+            if curl -fsS http://127.0.0.1:${KONG_HTTP_PORT}/auth/v1/health >/dev/null; then
+              echo '✅ Auth saudável'; break; fi; echo 'Tentando de novo...'; sleep 8; done
+          if ! curl -fsS http://127.0.0.1:${KONG_HTTP_PORT}/auth/v1/health >/dev/null; then
+            echo '❌ Auth não respondeu'; docker compose -f docker-compose-${INSTANCE_ID}.yml logs --tail=80 || true; exit 1; fi
+          echo 'JWT_SECRET='\"$JWT_SECRET\"
+          echo 'ANON_KEY='\"$ANON_KEY\"
+          echo 'SERVICE_ROLE_KEY='\"$SERVICE_ROLE_KEY\"
+          { echo 'JWT_SECRET='\"$JWT_SECRET\"; echo 'ANON_KEY='\"$ANON_KEY\"; echo 'SERVICE_ROLE_KEY='\"$SERVICE_ROLE_KEY\"; echo 'KONG_HTTP_PORT='\"$KONG_HTTP_PORT\"; } >> .env-${INSTANCE_ID}
+        "
+
+    - name: 🎉 Sucesso
+      run: |
+        echo "✅ Supabase self-host provisionado com sucesso"
+        echo "🌐 Gateway (Kong): http://${{ env.VPS_HOST }}:${{ env.KONG_PORT }}"
+        echo "🩺 Health: http://${{ env.VPS_HOST }}:${{ env.KONG_PORT }}/auth/v1/health"
