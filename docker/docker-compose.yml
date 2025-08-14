@@ -3,7 +3,7 @@ name: supabase-${INSTANCE_ID}
 services:
   studio:
     container_name: supabase-studio-${INSTANCE_ID}
-    image: supabase/studio:20250113-83c9420
+    image: supabase/studio:2025.06.30-sha-6f5982d
     restart: unless-stopped
     healthcheck:
       test:
@@ -121,7 +121,7 @@ services:
 
   rest:
     container_name: supabase-rest-${INSTANCE_ID}
-    image: postgrest/postgrest:v12.2.0
+    image: postgrest/postgrest:v12.2.12
     depends_on:
       db:
         condition: service_healthy
