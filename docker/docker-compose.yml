@@ -363,7 +363,7 @@ services:
       # Changes required for Pooler support
       - ./volumes-${INSTANCE_ID}/db/pooler.sql:/docker-entrypoint-initdb.d/migrations/99-pooler.sql:Z
       # Use named volume to persist pgsodium decryption key between restarts
-      - db-config:/etc/postgresql-custom
+      - db-config-${INSTANCE_ID}:/etc/postgresql-custom
 
   vector:
       container_name: supabase-vector-${INSTANCE_ID}
@@ -442,6 +442,6 @@ services:
       ]
 
 volumes:
-  db-data-${INSTANCE_ID}:
+  db-config-${INSTANCE_ID}:
 
 
