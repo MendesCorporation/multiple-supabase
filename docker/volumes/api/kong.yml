@@ -35,8 +35,7 @@ basicauth_credentials:
 ###
 services:
   ## Open Auth routes
-
-    - name: auth-v1-open
+  - name: auth-v1-open
     url: http://auth:9999/verify
     routes:
       - name: auth-v1-open
@@ -261,4 +260,5 @@ services:
       - name: basic-auth
         config:
           hide_credentials: true
+
 
